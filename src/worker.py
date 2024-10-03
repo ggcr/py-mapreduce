@@ -6,7 +6,11 @@ class Worker:
         self.n = n
         self.root = root
 
-    def map(self, M: int, chunk: str):
+    def map(self, M: int, chunk_path: str):
+        # read chunk from `files/chunks/chunk_{chunk_id}`
+        chunk = ""
+        with open(chunk_path, 'r') as fd:
+            chunk = fd.read()
         # assign to bucket (1st char mod M)
         buckets = {}
         for word in chunk.split(' '):

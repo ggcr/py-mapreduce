@@ -15,6 +15,7 @@ class Driver():
         self.M = M 
         self.BUCKETS_PARENT_PATH = "files/intermediate/"
         self.REDUCE_PARENT_PATH = "files/out/"
+        self.CHUNKS_PATH = "files/chunks/"
 
     def reset_state(self) -> None:
         # Reset State: there should be a more clean way to do this, however
@@ -28,6 +29,7 @@ class Driver():
 
         reset(self.BUCKETS_PARENT_PATH)
         reset(self.REDUCE_PARENT_PATH)
+        reset(self.CHUNKS_PATH)
 
     def map_worker(self, n: int, chunk: str) -> None:
         w = Worker(n, self.BUCKETS_PARENT_PATH)
@@ -56,7 +58,14 @@ class Driver():
         chunks = [' '.join(content[i: i+chunk_size]) for i in range(0, len(content), chunk_size)]
         if len(chunks) > self.N:
             chunks[self.N-1] = ' '.join(chunks[self.N-1:])
-        return chunks
+        # serialize chunks at `files/chunks/chunk_{i}.pkl`
+        chunks_ids = []
+        for i in range(0, len(chunks)):
+            chunk_store_path = os.path.join(self.CHUNKS_PATH, f'chunk_{i}')
+            with open(chunk_store_path, 'w') as fd:
+                fd.write(chunks[i])
+                chunks_ids.append(chunk_store_path)
+        return chunks_ids
 
     def accumulate_output(self) -> dict[str, int]:
         count = {}
@@ -74,14 +83,14 @@ class Driver():
         self.reset_state()
 
         # Map phase
-        chunks = self.split_chunks(FILES)
+        chunks_paths = self.split_chunks(FILES)
         print(f"[MAP PHASE with {self.N} workers]")
-        self.spawn(self.N, chunks, self.map_worker)
+        self.spawn(self.N, chunks_paths, self.map_worker)
 
         # Reduce phase
-        buckets = [[os.path.join(self.BUCKETS_PARENT_PATH, f"mr-{n}-{m}") for n in range(0, self.N)] for m in range(0, self.M)]
+        buckets_paths = [[os.path.join(self.BUCKETS_PARENT_PATH, f"mr-{n}-{m}") for n in range(0, self.N)] for m in range(0, self.M)]
         print(f"[REDUCE PHASE with {self.M} workers]")
-        self.spawn(self.M, buckets, self.reduce_worker)
+        self.spawn(self.M, buckets_paths, self.reduce_worker)
 
         return self.accumulate_output()
 
