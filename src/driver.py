@@ -1,6 +1,7 @@
 import os
 import math
 import time
+import pickle
 import shutil
 import multiprocessing
 from typing import Callable
@@ -61,9 +62,9 @@ class Driver():
         # serialize chunks at `files/chunks/chunk_{i}.pkl`
         chunks_ids = []
         for i in range(0, len(chunks)):
-            chunk_store_path = os.path.join(self.CHUNKS_PATH, f'chunk_{i}')
-            with open(chunk_store_path, 'w') as fd:
-                fd.write(chunks[i])
+            chunk_store_path = os.path.join(self.CHUNKS_PATH, f'chunk_{i}.pkl')
+            with open(chunk_store_path, 'wb') as fd:
+                pickle.dump(chunks[i], fd)
                 chunks_ids.append(chunk_store_path)
         return chunks_ids
 

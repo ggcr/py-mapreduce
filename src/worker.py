@@ -1,4 +1,5 @@
 import os
+import pickle
 
 class Worker:
     def __init__(self, n: int, root: str):
@@ -9,16 +10,14 @@ class Worker:
     def map(self, M: int, chunk_path: str):
         # read chunk from `files/chunks/chunk_{chunk_id}`
         chunk = ""
-        with open(chunk_path, 'r') as fd:
-            chunk = fd.read()
+        with open(chunk_path, 'rb') as fd:
+            chunk = pickle.load(fd)
         # assign to bucket (1st char mod M)
         buckets = {}
         for word in chunk.split(' '):
             b_id = ord(word[0]) % M
             buckets[b_id] = buckets.get(b_id, []) + [word]
 
-        # write intermediate result to bucket
-        # (TODO): Serialize with pickle (more efficent)?
         # note: there are not race conditions because the bucket is unique for each map worker node
 
         # stdout to intermediate buckets
@@ -28,7 +27,6 @@ class Worker:
             with open(bucket_path, 'a') as fd:
                 [fd.write(f"{word}\n") for word in v]
         
-
 
     def reduce(self, m: int, buckets: list[str]):
         # count words from each reduce bucket
