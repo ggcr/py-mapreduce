@@ -10,16 +10,9 @@ from src.worker import Worker
 
 class Driver():
     def __init__(self, N: int, M: int):
-        if N > 0:
-            self.N = N 
-        else:
-            raise ValueError(f"N must be a positive signed integer, got N={N}")
-
-        if M > 0:
-            self.M = M 
-        else:
-            raise ValueError(f"M must be a positive signed integer, got M={M}")
-
+        if N <= 0 or M <= 0: raise ValueError(f"N and M must be a positive signed integer, got N={N} and M={M}.")
+        self.N = N 
+        self.M = M 
         self.BUCKETS_PARENT_PATH = "files/intermediate/"
         self.REDUCE_PARENT_PATH = "files/out/"
 
