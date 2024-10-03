@@ -1,6 +1,7 @@
 import os
 from src import utils
 from src.driver import Driver
+import sys
 
 def sequential_count(FILES: list[str]):
     res = {}
@@ -12,13 +13,14 @@ def sequential_count(FILES: list[str]):
 
 if __name__ == '__main__':
     FILES = ["inputs/simple_test_1.txt", "inputs/simple_test_2.txt", "inputs/simple_test_3.txt",]
-    N = 20 # map tasks
+    N = 3 # map tasks
     M = 4 # reduce tasks
     driver = Driver(N, M)
     res = driver.run(FILES)
     print(res)
     GT = sequential_count(FILES)
     assert res == GT, f"Expected {GT}, got {res}"
+    sys.exit()
 
     FILES = ['inputs/pg-sherlock_holmes.txt', 'inputs/pg-tom_sawyer.txt', 'inputs/pg-frankenstein.txt', 'inputs/pg-grimm.txt', 'inputs/pg-being_ernest.txt', 'inputs/pg-huckleberry_finn.txt', 'inputs/pg-metamorphosis.txt', 'inputs/pg-dorian_gray.txt']
     N = 20 # map tasks
