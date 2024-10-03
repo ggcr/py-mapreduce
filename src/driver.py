@@ -3,106 +3,93 @@ import math
 import time
 import shutil
 import multiprocessing
+from typing import Callable
 
 from src import utils
-from src.main import sequential_count
 from src.worker import Worker
 
-# Naïve approach: spawn a worker for each file.
-import sys
+class Driver():
+    def __init__(self, N: int, M: int):
+        if N > 0:
+            self.N = N 
+        else:
+            raise ValueError(f"N must be a positive signed integer, got N={N}")
 
-BUCKETS_PARENT_PATH = "files/intermediate/"
-REDUCE_PARENT_PATH = "files/out/"
+        if M > 0:
+            self.M = M 
+        else:
+            raise ValueError(f"M must be a positive signed integer, got M={M}")
 
-def reset_state():
-    # Reset State: there should be a more clean way to do this, however
-    # for subsequent runs with different params (N, M), for short texts
-    # we may re-use previous buckets. For now I'll delete dirs beforehand.
-    # (TODO): Look into a better way to manage state.
-    if os.path.exists(BUCKETS_PARENT_PATH):
-        shutil.rmtree(BUCKETS_PARENT_PATH)
-    os.makedirs(BUCKETS_PARENT_PATH, exist_ok=True)
+        self.BUCKETS_PARENT_PATH = "files/intermediate/"
+        self.REDUCE_PARENT_PATH = "files/out/"
 
-    if os.path.exists(REDUCE_PARENT_PATH):
-        shutil.rmtree(REDUCE_PARENT_PATH)
-    os.makedirs(REDUCE_PARENT_PATH, exist_ok=True)
+    def reset_state(self) -> None:
+        # Reset State: there should be a more clean way to do this, however
+        # for subsequent runs with different params (N, M), for short texts
+        # we may re-use previous buckets. For now I'll delete dirs beforehand.
+        # (TODO): Look into a better way to manage state.
+        def reset(PATH: str) -> None:
+            if os.path.exists(PATH):
+                shutil.rmtree(PATH)
+            os.makedirs(PATH, exist_ok=True)
 
-def map_worker(n: int, M: int, chunk: str) -> None:
-    print(f"[ID {n}, M {M}] CHUNK {chunk}")
-    w = Worker(n, BUCKETS_PARENT_PATH)
-    w.map(M, chunk)
+        reset(self.BUCKETS_PARENT_PATH)
+        reset(self.REDUCE_PARENT_PATH)
 
-def reduce_worker(m: int, buckets: list[str]):
-    print(f"[ID {m}] {buckets}")
-    w = Worker(m, REDUCE_PARENT_PATH)
-    w.reduce(m, buckets)
+    def map_worker(self, n: int, chunk: str) -> None:
+        w = Worker(n, self.BUCKETS_PARENT_PATH)
+        w.map(self.M, chunk)
 
-def spawn_workers(N: int, M: int, FILES: list[str]) -> None:
-    if N <= 0: raise ValueError(f"N must be a positive signed integer, got N={N}")
-    if M <= 0: raise ValueError(f"M must be a positive signed integer, got M={M}")
-    reset_state()
+    def reduce_worker(self, m: int, buckets: list[str]) -> None:
+        w = Worker(m, self.REDUCE_PARENT_PATH)
+        w.reduce(m, buckets)
 
-    # SPLIT FILES INTO N CHUNKS
-    content = utils.readAllWords(FILES)
-    chunk_size = len(content) // N
-    chunks = [' '.join(content[i: i+chunk_size]) for i in range(0, len(content), chunk_size)]
-    if len(chunks) > N:
-        chunks[N-1] = ' '.join(chunks[N-1:])
-    print(f"FILES: {FILES}")
-    print(f"content: {content}")
-    print(f"chunks (of size {chunk_size}): {chunks}")
+    def spawn(self, num_t: int, data: list, target: Callable) -> None:
+        threads = []
+        for n in range(0, num_t):
+            t = multiprocessing.Process(
+                target=target,
+                args=(n, data[n],)
+            )
+            threads.append(t)
+            t.start()
+        for t in threads: # wait until all threads done
+            t.join()
+
+    def split_chunks(self, FILES: list[str]) -> list[str]:
+        # SPLIT FILES INTO N CHUNKS
+        content = utils.readAllWords(FILES)
+        chunk_size = len(content) // self.N
+        chunks = [' '.join(content[i: i+chunk_size]) for i in range(0, len(content), chunk_size)]
+        if len(chunks) > self.N:
+            chunks[self.N-1] = ' '.join(chunks[self.N-1:])
+        return chunks
+
+    def accumulate_output(self) -> dict[str, int]:
+        count = {}
+        for m in range(0, self.M):
+            out_bucket = os.path.join(self.REDUCE_PARENT_PATH, f"out-{m}")
+            if os.path.exists(out_bucket):
+                with open(out_bucket, 'r') as fd:
+                    bufcont = fd.read().splitlines()
+                    for record in bufcont:
+                        k, v = record.split(' ')
+                        count[k] = count.get(k, 0) + int(v)
+        return count
+
+    def run(self, FILES: list[str]) -> None:
+        self.reset_state()
+
+        # Map phase
+        chunks = self.split_chunks(FILES)
+        print(f"[MAP PHASE with {self.N} workers]")
+        self.spawn(self.N, chunks, self.map_worker)
+
+        # Reduce phase
+        buckets = [[os.path.join(self.BUCKETS_PARENT_PATH, f"mr-{n}-{m}") for n in range(0, self.N)] for m in range(0, self.M)]
+        print(f"[REDUCE PHASE with {self.M} workers]")
+        self.spawn(self.M, buckets, self.reduce_worker)
+
+        return self.accumulate_output()
+
     
-    # MAP PHASE
-    print(f"Starting {N} map workers")
-    threads = []
-    for n in range(0, N):
-        t = multiprocessing.Process(
-            target=map_worker,
-            args=(n, M, chunks[n])
-        )
-        threads.append(t)
-        t.start()
-
-    for t in threads:
-        t.join()
-    print("Map phase done!\n")
-
-    # REDUCE PHASE
-    print(f"Starting {M} reduce workers")
-    for m in range(0, M):
-        avail_buckets = [os.path.join(BUCKETS_PARENT_PATH, f"mr-{n}-{m}") for n in range(0, N)]
-        t = multiprocessing.Process(
-            target=reduce_worker,
-            args=(m, avail_buckets, )
-        )
-        threads.append(t)
-        t.start()
-
-    for t in threads:
-        t.join()
-    print("Reduce phase done!\n")
-
-def accumulate_output(M: int):
-    count = {}
-    for m in range(0, M):
-        out_bucket = os.path.join(REDUCE_PARENT_PATH, f"out-{m}")
-        if os.path.exists(out_bucket):
-            with open(out_bucket, 'r') as fd:
-                bufcont = fd.read().splitlines()
-                for record in bufcont:
-                    k, v = record.split(' ')
-                    count[k] = count.get(k, 0) + int(v)
-    return count
-    
-if __name__ == '__main__':
-    FILES = ["inputs/simple_test_1.txt", "inputs/simple_test_2.txt", "inputs/simple_test_3.txt",]
-    N = 20 # map tasks
-    M = 4 # reduce tasks
-
-    spawn_workers(N, M, FILES)
-    final_count = accumulate_output(M)
-    print(final_count)
-
-    GT_count = sequential_count(FILES)
-    print(GT_count)
-    assert final_count == GT_count, f"Expected {GT_count}, got {final_count}"

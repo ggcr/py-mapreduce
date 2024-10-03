@@ -17,5 +17,4 @@ def readAllWords(FILES: list[str]) -> list[str]:
     content = []
     for file in FILES:
         content.extend(readFile(file).split(' '))
-    print(content)
     return content
