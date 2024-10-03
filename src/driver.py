@@ -6,6 +6,7 @@ import multiprocessing
 
 from src import utils
 from src.main import sequential_count
+from src.worker import Worker
 
 # Naïve approach: spawn a worker for each file.
 import sys
@@ -17,7 +18,7 @@ def reset_state():
     # Reset State: there should be a more clean way to do this, however
     # for subsequent runs with different params (N, M), for short texts
     # we may re-use previous buckets. For now I'll delete dirs beforehand.
-    # (TODO): Look into a better way to manage the problem.
+    # (TODO): Look into a better way to manage state.
     if os.path.exists(BUCKETS_PARENT_PATH):
         shutil.rmtree(BUCKETS_PARENT_PATH)
     os.makedirs(BUCKETS_PARENT_PATH, exist_ok=True)
@@ -26,53 +27,14 @@ def reset_state():
         shutil.rmtree(REDUCE_PARENT_PATH)
     os.makedirs(REDUCE_PARENT_PATH, exist_ok=True)
 
-class Worker:
-    def __init__(self, n: int):
-        self.n = n
-
-    def map(self, M: int, chunk: str):
-        # read file
-        buckets = {}
-        for word in chunk.split(' '):
-            b_id = ord(word[0]) % M
-            buckets[b_id] = buckets.get(b_id, []) + [word]
-
-        # write intermediate result to bucket
-        # (TODO): Serialize with pickle (more efficent)?
-        # note: there are not race conditions because the bucket is unique for each map worker node
-
-        for bucket_num, v in buckets.items():
-            bucket_name = f"mr-{self.n}-{bucket_num}"
-            bucket_path = os.path.join(BUCKETS_PARENT_PATH, bucket_name)
-            with open(bucket_path, 'a') as fd:
-                [fd.write(f"{word}\n") for word in v]
-        
-
-
-    def reduce(self, m: int, buckets: list[str]):
-        # count words from each reduce bucket
-        res = {}
-        for bucket in buckets:
-            data = []
-            if os.path.exists(bucket):
-                with open(bucket, 'r') as fd:
-                    data = fd.read().splitlines() 
-                for word in data:
-                    res[word] = res.get(word, 0) + 1
-        print(res)
-        # output to file
-        out_path = os.path.join(REDUCE_PARENT_PATH, f"out-{m}")
-        with open(out_path, 'w') as fd:
-            [fd.write(f"{k} {v}\n") for k, v in res.items()]
-
 def map_worker(n: int, M: int, chunk: str) -> None:
     print(f"[ID {n}, M {M}] CHUNK {chunk}")
-    w = Worker(n)
+    w = Worker(n, BUCKETS_PARENT_PATH)
     w.map(M, chunk)
 
 def reduce_worker(m: int, buckets: list[str]):
     print(f"[ID {m}] {buckets}")
-    w = Worker(m)
+    w = Worker(m, REDUCE_PARENT_PATH)
     w.reduce(m, buckets)
 
 def spawn_workers(N: int, M: int, FILES: list[str]) -> None:
