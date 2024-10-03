@@ -18,12 +18,12 @@ if __name__ == '__main__':
     print("SEQUENTIAL COUNT:")
     print(count, '\n')
 
-    FILES = ['inputs/pg-sherlock_holmes.txt', 'inputs/pg-tom_sawyer.txt', 'inputs/pg-frankenstein.txt', 'inputs/pg-grimm.txt', 'inputs/pg-being_ernest.txt', 'inputs/pg-huckleberry_finn.txt', 'inputs/pg-metamorphosis.txt', 'inputs/pg-dorian_gray.txt']
-    count = sequential_count(FILES)
-    print("FILES:")
-    [print(file) for file in FILES]
-    print("SEQUENTIAL COUNT:")
-    print(count, '\n')
+    # FILES = ['inputs/pg-sherlock_holmes.txt', 'inputs/pg-tom_sawyer.txt', 'inputs/pg-frankenstein.txt', 'inputs/pg-grimm.txt', 'inputs/pg-being_ernest.txt', 'inputs/pg-huckleberry_finn.txt', 'inputs/pg-metamorphosis.txt', 'inputs/pg-dorian_gray.txt']
+    # count = sequential_count(FILES)
+    # print("FILES:")
+    # [print(file) for file in FILES]
+    # print("SEQUENTIAL COUNT:")
+    # print(count, '\n')
 
 # def map(filename: str, contents: str) -> dict[str, int]:
 #     res = {}

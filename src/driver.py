@@ -2,6 +2,7 @@ import multiprocessing
 import os
 import time
 from src import utils
+from src.main import sequential_count
 # Naïve approach: spawn a worker for each file.
 
 BUCKETS_PARENT_PATH = "files/intermediate/"
@@ -67,10 +68,9 @@ def reduce_worker(m: int, buckets: list[str]):
     w = Worker(m)
     w.reduce(m, buckets)
 
-def spawn_workers(N: int, M: int) -> None:
+def spawn_workers(N: int, M: int, FILES: list[str]) -> None:
     # MAP PHASE
     print(f"Starting {N} map workers")
-    FILES = ["inputs/simple_test_1.txt", "inputs/simple_test_2.txt", "inputs/simple_test_3.txt",]
     N = len(FILES) # provisional
     threads = []
     for n in range(0, N):
@@ -113,9 +113,14 @@ def accumulate_output(M: int):
     return count
     
 if __name__ == '__main__':
+    FILES = ["inputs/simple_test_1.txt", "inputs/simple_test_2.txt", "inputs/simple_test_3.txt",]
     N = 3 # map tasks
     M = 5 # reduce tasks
 
-    spawn_workers(N, M)
+    spawn_workers(N, M, FILES)
     final_count = accumulate_output(M)
     print(final_count)
+
+    GT_count = sequential_count(FILES)
+    print(GT_count)
+    assert final_count == GT_count, f"Expected {GT_count}, got {final_count}"
