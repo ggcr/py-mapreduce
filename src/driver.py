@@ -1,45 +1,52 @@
-import multiprocessing
 import os
+import math
 import time
+import shutil
+import multiprocessing
+
 from src import utils
 from src.main import sequential_count
+
 # Naïve approach: spawn a worker for each file.
+import sys
 
 BUCKETS_PARENT_PATH = "files/intermediate/"
-os.makedirs(BUCKETS_PARENT_PATH, exist_ok=True)
-
 REDUCE_PARENT_PATH = "files/out/"
-os.makedirs(REDUCE_PARENT_PATH, exist_ok=True)
+
+def reset_state():
+    # Reset State: there should be a more clean way to do this, however
+    # for subsequent runs with different params (N, M), for short texts
+    # we may re-use previous buckets. For now I'll delete dirs beforehand.
+    # (TODO): Look into a better way to manage the problem.
+    if os.path.exists(BUCKETS_PARENT_PATH):
+        shutil.rmtree(BUCKETS_PARENT_PATH)
+    os.makedirs(BUCKETS_PARENT_PATH, exist_ok=True)
+
+    if os.path.exists(REDUCE_PARENT_PATH):
+        shutil.rmtree(REDUCE_PARENT_PATH)
+    os.makedirs(REDUCE_PARENT_PATH, exist_ok=True)
 
 class Worker:
     def __init__(self, n: int):
         self.n = n
 
-    def map(self, M: int, FILENAME: str):
+    def map(self, M: int, chunk: str):
         # read file
-        contents = utils.readFile(FILENAME).split(' ')
         buckets = {}
-        for word in contents:
+        for word in chunk.split(' '):
             b_id = ord(word[0]) % M
             buckets[b_id] = buckets.get(b_id, []) + [word]
-
-        # create bucket files
-        # BUCKETS_PARENT_PATH = "files/intermediate/"
-        # os.makedirs(BUCKETS_PARENT_PATH, exist_ok=True)
-        # [open(os.path.join(BUCKETS_PARENT_PATH, f"mr-{n}-{m}"), 'a').close() for m in range(0, M) for n in range(0, self.n)]
 
         # write intermediate result to bucket
         # (TODO): Serialize with pickle (more efficent)?
         # note: there are not race conditions because the bucket is unique for each map worker node
 
-        # This write flag will overwrite previous executions runs results
-        overwrite = {bucket_num: True for bucket_num in set(buckets.keys())} 
         for bucket_num, v in buckets.items():
             bucket_name = f"mr-{self.n}-{bucket_num}"
             bucket_path = os.path.join(BUCKETS_PARENT_PATH, bucket_name)
-            with open(bucket_path, 'w' if overwrite[bucket_num] else 'a') as fd:
+            with open(bucket_path, 'a') as fd:
                 [fd.write(f"{word}\n") for word in v]
-            overwrite[bucket_num] = False
+        
 
 
     def reduce(self, m: int, buckets: list[str]):
@@ -58,10 +65,10 @@ class Worker:
         with open(out_path, 'w') as fd:
             [fd.write(f"{k} {v}\n") for k, v in res.items()]
 
-def map_worker(n: int, M: int, filename: str) -> None:
-    print(f"[ID {n}, M {M}] FILE {filename}")
+def map_worker(n: int, M: int, chunk: str) -> None:
+    print(f"[ID {n}, M {M}] CHUNK {chunk}")
     w = Worker(n)
-    w.map(M, filename)
+    w.map(M, chunk)
 
 def reduce_worker(m: int, buckets: list[str]):
     print(f"[ID {m}] {buckets}")
@@ -69,14 +76,27 @@ def reduce_worker(m: int, buckets: list[str]):
     w.reduce(m, buckets)
 
 def spawn_workers(N: int, M: int, FILES: list[str]) -> None:
+    if N <= 0: raise ValueError(f"N must be a positive signed integer, got N={N}")
+    if M <= 0: raise ValueError(f"M must be a positive signed integer, got M={M}")
+    reset_state()
+
+    # SPLIT FILES INTO N CHUNKS
+    content = utils.readAllWords(FILES)
+    chunk_size = len(content) // N
+    chunks = [' '.join(content[i: i+chunk_size]) for i in range(0, len(content), chunk_size)]
+    if len(chunks) > N:
+        chunks[N-1] = ' '.join(chunks[N-1:])
+    print(f"FILES: {FILES}")
+    print(f"content: {content}")
+    print(f"chunks (of size {chunk_size}): {chunks}")
+    
     # MAP PHASE
     print(f"Starting {N} map workers")
-    N = len(FILES) # provisional
     threads = []
     for n in range(0, N):
         t = multiprocessing.Process(
             target=map_worker,
-            args=(n, M, FILES[n])
+            args=(n, M, chunks[n])
         )
         threads.append(t)
         t.start()
@@ -114,8 +134,8 @@ def accumulate_output(M: int):
     
 if __name__ == '__main__':
     FILES = ["inputs/simple_test_1.txt", "inputs/simple_test_2.txt", "inputs/simple_test_3.txt",]
-    N = 3 # map tasks
-    M = 5 # reduce tasks
+    N = 20 # map tasks
+    M = 4 # reduce tasks
 
     spawn_workers(N, M, FILES)
     final_count = accumulate_output(M)

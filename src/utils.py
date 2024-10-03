@@ -12,3 +12,10 @@ def readFile(path: str) -> str:
     except FileNotFoundError:
         print(f"File with path {path} was not found.")
     return None
+
+def readAllWords(FILES: list[str]) -> list[str]:
+    content = []
+    for file in FILES:
+        content.extend(readFile(file).split(' '))
+    print(content)
+    return content
