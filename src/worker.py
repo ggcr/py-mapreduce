@@ -1,7 +1,7 @@
 import os
 import pickle
 
-#class Worker:
+class Worker:
     def __init__(self, n: int, root: str):
         self.n = n
         self.root = root
