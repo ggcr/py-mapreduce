@@ -16,7 +16,6 @@ cd py-mapreduce
 ```bash
 conda create -n pymapreduce python=3.10 -y
 conda activate pymapreduce
-pip install --upgrade pip  # enable PEP 660 support
 pip install requests
 ```
 
@@ -53,6 +52,8 @@ python3 -m src.main -N 30 -M 30 inputs/*.txt
 
 ## Project Structure
 
+Due to the constraint of only being able to send metadata between the driver and workers, the framework splits input files into N chunks and stores them in an intermediate directory at `files/chunks/`. This approach allows for the distribution of work across workers while mantaining the requirement of metadata-only transfer.
+
 ```
 ├── files
 │   ├── chunks
@@ -79,7 +80,6 @@ python3 -m src.main -N 30 -M 30 inputs/*.txt
     └── worker.py
 ```
 
-Due to the constraint of only being able to send metadata between the driver and workers, the framework splits input files into N chunks and stores them in an intermediate directory at `files/chunks/`. This approach allows for the distribution of work across workers while mantaining the requirement of metadata-only transfer.
 
 ## Communication Protocol
 
