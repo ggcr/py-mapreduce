@@ -50,6 +50,10 @@ python3 -m src.main -N 30 -M 30 inputs/*.txt
 >
 > For example, if N=30 and M=20, a total of 30 workers will be created and reused for both phases of the MapReduce process.
 
+## Code architecture
+
+<img src="images/arch.jpg" />
+
 ## Project Structure
 
 Due to the constraint of only being able to send metadata between the driver and workers, the driver splits input files into N chunks and stores them in an intermediate directory at `files/chunks/`. This approach allows for the distribution of work across workers while mantaining the requirement of metadata-only transfer.
