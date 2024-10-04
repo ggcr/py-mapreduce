@@ -20,7 +20,7 @@ class Driver():
         self.BUCKETS_PARENT_PATH = "files/intermediate/"
         self.REDUCE_PARENT_PATH = "files/out/"
         self.CHUNKS_PATH = "files/chunks/"
-        self.WORKERS_URL = "http://localhost:8000/worker"
+        self.WORKERS_URL = "http://localhost:"
 
     def reset_state(self) -> None:
         # Reset State: there should be a more clean way to do this, however
@@ -36,22 +36,23 @@ class Driver():
         reset(self.REDUCE_PARENT_PATH)
         reset(self.CHUNKS_PATH)
 
-    def map_worker(self, n: int, chunk: str, retry: int = 0) -> None:
+    def map_worker(self, n: int, chunk: str, retries: int = 0) -> None:
         try:
             payload = {
                 'n': n, 'M': self.M, 'chunk': chunk,
                 'BUCKETS_PARENT_PATH': self.BUCKETS_PARENT_PATH,
             }
-            response = requests.post(url=f"{self.WORKERS_URL}_{8000 + n}/map", json=payload)
+            response = requests.post(url=f"http://localhost:{8000 + n + 1}/map", json=payload)
             response.raise_for_status() # checks that res.status_code == 200 (OK)
         except requests.exceptions.ConnectionError:
+            print(f"[DRIVER] HTTP Worker http://localhost:{8000 + n + 1} is down. Attempting retry {retries + 1}")
             # http worker is down
             # we can raise it up from here :)
-            process = subprocess.Popen([sys.executable, '-m', 'src.http_worker', str(n)])
+            process = subprocess.Popen([sys.executable, '-m', 'src.http_worker', '-id', str(n + 1)], stdout=subprocess.PIPE, text=True)
             # recursively try to reconnect 4 more times
-            if retries < 4:
-                self.map_worker(m, buckets, retries + 1)
-
+            time.sleep(1)
+            if retries < 5:
+                self.map_worker(n, chunk, retries + 1)
 
     def reduce_worker(self, m: int, buckets: list[str], retries: int = 0) -> None:
         try:
@@ -60,14 +61,16 @@ class Driver():
                 'REDUCE_PARENT_PATH': self.REDUCE_PARENT_PATH,
                 'buckets': buckets
             }
-            response = requests.post(url=f"{self.WORKERS_URL}_{m}/reduce", json=payload)
+            response = requests.post(url=f"http://localhost:{8000 + m + 1}/reduce", json=payload)
             response.raise_for_status() # checks that res.status_code == 200 (OK)
         except requests.exceptions.ConnectionError:
+            print(f"[DRIVER] HTTP Worker http://localhost:{8000 + m + 1} is down. Attempting retry {retries + 1}")
             # http worker is down
             # we can raise it up from here :)
-            process = subprocess.Popen([sys.executable, '-m', 'src.http_worker', str(m)])
+            process = subprocess.Popen([sys.executable, '-m', 'src.http_worker', '-id', str(m + 1)], text=True)
             # recursively try to reconnect 4 more times
-            if retries < 4:
+            time.sleep(2)
+            if retries < 5:
                 self.reduce_worker(m, buckets, retries + 1)
 
     def spawn(self, num_t: int, data: list, target: Callable) -> None:

@@ -1,5 +1,6 @@
 import sys
 import json
+import argparse
 from multiprocessing import Process
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
@@ -14,12 +15,10 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         # basic routing (nothing fancy)
         if self.path.endswith('/map'):
-            print(f"MAP RECIEVED \t payload = {payload}")
             w = Worker(payload['n'], payload['BUCKETS_PARENT_PATH'])
             w.map(payload['M'], payload['chunk'])
             pass
         elif self.path.endswith('/reduce'):
-            print(f"REDUCE RECIEVED \t payload = {payload}")
             w = Worker(payload['m'], payload['REDUCE_PARENT_PATH'])
             w.reduce(payload['m'], payload['buckets'])
             pass
@@ -41,10 +40,29 @@ def run(w_id: int) -> None:
     httpd.serve_forever()
     
 if __name__ == '__main__':
-    # Usage: python3 -m src.http_worker <id_1> <id_2> ... <id_N>
+    # Usage: python3 -m src.http_worker -N 3 -M 4
+    # Usage for the Driver: python3 -m src.http_worker -id <id>
+    # Range of ports will be 8001:
+    parser = argparse.ArgumentParser(description="HTTP Worker Request Handler.")
+    parser.add_argument('-N',  type=int, default=None, required=False, help="Number of map tasks")
+    parser.add_argument('-M',  type=int, default=None, required=False, help="Number of reduce tasks")
+    parser.add_argument('-id', type=int, default=None, required=False, help="Worker id (port 8000 + id)")
+    args = parser.parse_args()
+
+    N = args.N
+    M = args.M
+    id = args.id
+    w_ids = []
+    if id is not None:
+        w_ids = [int(id)]
+    elif N is not None and M is not None:
+        w_ids = [int(id) for id in range(1, max(N, M) + 1)]
+    else:
+        raise ValueError(f"Incorrect usage of HTTPWorker for args={args}.")
+
     threads = []
-    for n_arg in range(1, len(sys.argv)):
-        t = Process(target=run, args=(int(sys.argv[n_arg]),))
+    for w_id in w_ids:
+        t = Process(target=run, args=(w_id,))
         threads.append(t)
         t.start()
     for t in threads:

@@ -1,7 +1,10 @@
 import os
+import sys
+import glob
+import argparse
+
 from src import utils
 from src.driver import Driver
-import sys
 
 def sequential_count(FILES: list[str]):
     res = {}
@@ -12,19 +15,21 @@ def sequential_count(FILES: list[str]):
     return res
 
 if __name__ == '__main__':
-    FILES = ["inputs/simple_test_1.txt", "inputs/simple_test_2.txt", "inputs/simple_test_3.txt",]
-    N = 3 # map tasks
-    M = 4 # reduce tasks
-    driver = Driver(N, M)
-    res = driver.run(FILES)
-    print(res)
-    GT = sequential_count(FILES)
-    assert res == GT, f"Expected {GT}, got {res}"
-    sys.exit()
+    """
+    Usage: python3 -m src.main -N 3 -M 4 inputs/*
+    """
+    parser = argparse.ArgumentParser(description="MapReduce microframework through HTTP.")
+    parser.add_argument('-N', type=int, default=3, required=True, help="Number of map tasks")
+    parser.add_argument('-M', type=int, default=4, required=True, help="Number of reduce tasks")
+    parser.add_argument('FILES', nargs='+', default=['inputs/*'], help="List of input file paths")
+    args = parser.parse_args()
 
-    FILES = ['inputs/pg-sherlock_holmes.txt', 'inputs/pg-tom_sawyer.txt', 'inputs/pg-frankenstein.txt', 'inputs/pg-grimm.txt', 'inputs/pg-being_ernest.txt', 'inputs/pg-huckleberry_finn.txt', 'inputs/pg-metamorphosis.txt', 'inputs/pg-dorian_gray.txt']
-    N = 20 # map tasks
-    M = 4 # reduce tasks
+    N = args.N
+    M = args.M
+    FILES = [] # to support wildcards e.g. `-FILES inputs/*`
+    for file_pattern in args.FILES:
+        FILES.extend(glob.glob(file_pattern))
+
     driver = Driver(N, M)
     res = driver.run(FILES)
     # print(res)
