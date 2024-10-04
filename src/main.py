@@ -26,7 +26,7 @@ if __name__ == '__main__':
 
     N = args.N
     M = args.M
-    FILES = [] # to support wildcards e.g. `-FILES inputs/*`
+    FILES = [] # to support wildcards e.g. `inputs/*`
     for file_pattern in args.FILES:
         FILES.extend(glob.glob(file_pattern))
 
@@ -34,4 +34,6 @@ if __name__ == '__main__':
     res = driver.run(FILES)
     # print(res)
     GT = sequential_count(FILES)
+    print(f"[MAIN] Testing the accumulated output with the sequential count.")
     assert res == GT, f"Expected {GT}, got {res}"
+    print(f"[MAIN] ✅ Result is correct.")

@@ -3,7 +3,6 @@ import pickle
 
 class Worker:
     def __init__(self, n: int, root: str):
-        print(f"[WORKER {n}] Spawned")
         self.n = n
         self.root = root
 
