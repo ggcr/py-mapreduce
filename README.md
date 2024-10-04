@@ -117,4 +117,14 @@ This method attempts to send a map task to a worker. If the worker is not respon
 
 This approach ensures that the framework can recover from worker failures or missing workers, making it more robust and easier to use. Users don't need to worry about starting all workers manually - the system will create them as needed.
 
+## Further Work
+
+Several areas for improvement:
+
+1. **State Reset Method**: The `reset_state()` method removes all the `files/` sub-directories in between subsequent runs to avoid having incorrect results for subsequent runs with different N and M values or very small inputs, as it may reuse previous execution's intermediate results.
+
+2. **Dynamic Worker Creation**: The recursive retry mechanism for creating workers doesn't accurately determine how long to wait for the subprocess to start. Implementing a socket-based communication system would provide more reliable worker initialization from the Driver.
+
+3. **File Chunking**: Creating N chunks and storing them in the filesystem may be inefficient, especially for large files, despite the usage of serialization.
+
 For more details on the implementation, please refer to the source code in the `src` directory.
