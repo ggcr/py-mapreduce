@@ -80,4 +80,25 @@ The framework uses a simple HTTP-based communication protocol between the driver
 
 <img src="images/protocol.jpg" width="675" />
 
+## Recursive dynamic creation of HTTP Workers
+
+One nice feature of this framework is the ability to dynamically create workers when needed. This is particularly useful when a worker is not responding or has not been started. Here's how it works:
+
+```python
+def map_worker(self, n: int, chunk_path: str, retries: int = 0) -> None:
+    try:
+        payload = {
+            'n': n, 'M': self.M, 'chunk': chunk_path,
+            'BUCKETS_PARENT_PATH': self.BUCKETS_PARENT_PATH,
+        }
+        response = requests.post(url=f"{self.WORKERS_URL}:{8000 + n + 1}/map", json=payload)
+        response.raise_for_status() # checks that res.status_code == 200 (OK)
+    except requests.exceptions.ConnectionError:
+        print(f"[DRIVER] HTTP Worker {self.WORKERS_URL}:{8000 + n + 1} is not up. Attempting retry {retries + 1}")
+        process = subprocess.Popen([sys.executable, '-m', 'src.http_worker', '-id', str(n + 1)])
+        if retries < 5:
+            time.sleep(1)
+            self.map_worker(n, chunk_path, retries + 1) # recursive
+```
+
 For more details on the implementation, please refer to the source code in the `src` directory.
