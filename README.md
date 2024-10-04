@@ -46,6 +46,8 @@ Simply run the driver, which will start the workers automatically:
 python3 -m src.main -N 30 -M 30 inputs/*.txt
 ```
 
+Note: The framework will create a maximum of `max(N, M)` workers. These workers are reused for both map and reduce tasks, optimizing resource usage. For example, if N=30 and M=20, a total of 30 workers will be created and reused for both phases of the MapReduce process.
+
 ## Project Structure
 
 ```
