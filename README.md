@@ -52,13 +52,15 @@ python3 -m src.main -N 30 -M 30 inputs/*.txt
 ├── files
 │   ├── chunks
 │   │   ├── chunk_0.pkl
-│   │   ├── chunk_N.pkl
+│   │   ├── ...
+│   │   └── chunk_N.pkl
 │   ├── intermediate
 │   │   ├── mr-0-1
-│   │   ├── mr-0-1
+│   │   ├── ...
 │   │   └── mr-N-M
 │   └── out
 │       ├── out-0
+│       ├── ...
 │       └── out-M
 ├── inputs
 │   ├── pg-being_ernest.txt
@@ -76,6 +78,6 @@ python3 -m src.main -N 30 -M 30 inputs/*.txt
 
 The framework uses a simple HTTP-based communication protocol between the driver and workers. Here's an example sequence for N=4 and M=3:
 
-<img src="images/protocol.jpg" width="638" />
+<img src="images/protocol.jpg" width="675" />
 
 For more details on the implementation, please refer to the source code in the `src` directory.
