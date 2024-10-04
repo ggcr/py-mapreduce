@@ -46,7 +46,10 @@ Simply run the driver, which will start the workers automatically:
 python3 -m src.main -N 30 -M 30 inputs/*.txt
 ```
 
-Note: The framework will create a maximum of `max(N, M)` workers. These workers are reused for both map and reduce tasks, optimizing resource usage. For example, if N=30 and M=20, a total of 30 workers will be created and reused for both phases of the MapReduce process.
+> [!NOTE]
+> The framework will create a maximum of `max(N, M)` workers. These workers are reused for both map and reduce tasks, optimizing resource usage.
+>
+> For example, if N=30 and M=20, a total of 30 workers will be created and reused for both phases of the MapReduce process.
 
 ## Project Structure
 
@@ -75,6 +78,8 @@ Note: The framework will create a maximum of `max(N, M)` workers. These workers 
     ├── utils.py
     └── worker.py
 ```
+
+Due to the constraint of only being able to send metadata between the driver and workers, the framework splits input files into N chunks and stores them in an intermediate directory at `files/chunks/`. This approach allows for the distribution of work across workers while mantaining the requirement of metadata-only transfer.
 
 ## Communication Protocol
 
