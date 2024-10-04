@@ -101,4 +101,13 @@ def map_worker(self, n: int, chunk_path: str, retries: int = 0) -> None:
             self.map_worker(n, chunk_path, retries + 1) # recursive
 ```
 
+This method attempts to send a map task to a worker. If the worker is not responding (`ConnectionError`), the driver will:
+
+1. Log the failure and retry attempt.
+2. Spawn a new worker process using `subprocess.Popen`.
+3. Wait for 1 second to allow the worker to start up.
+4. Retry the map task, up to a maximum of 5 attempts.
+
+This approach ensures that the framework can recover from worker failures or missing workers, making it more robust and easier to use. Users don't need to worry about starting all workers manually - the system will create them as needed.
+
 For more details on the implementation, please refer to the source code in the `src` directory.
