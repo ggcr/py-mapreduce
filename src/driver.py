@@ -36,10 +36,10 @@ class Driver():
         reset(self.REDUCE_PARENT_PATH)
         reset(self.CHUNKS_PATH)
 
-    def map_worker(self, n: int, chunk: str, retries: int = 0) -> None:
+    def map_worker(self, n: int, chunk_path: str, retries: int = 0) -> None:
         try:
             payload = {
-                'n': n, 'M': self.M, 'chunk': chunk,
+                'n': n, 'M': self.M, 'chunk': chunk_path,
                 'BUCKETS_PARENT_PATH': self.BUCKETS_PARENT_PATH,
             }
             response = requests.post(url=f"{self.WORKERS_URL}:{8000 + n + 1}/map", json=payload)
@@ -52,14 +52,14 @@ class Driver():
             # recursively try to reconnect 4 more times
             if retries < 5:
                 time.sleep(1)
-                self.map_worker(n, chunk, retries + 1)
+                self.map_worker(n, chunk_path, retries + 1)
 
-    def reduce_worker(self, m: int, buckets: list[str], retries: int = 0) -> None:
+    def reduce_worker(self, m: int, buckets_paths: list[str], retries: int = 0) -> None:
         try:
             payload = {
                 'm': m,
                 'REDUCE_PARENT_PATH': self.REDUCE_PARENT_PATH,
-                'buckets': buckets
+                'buckets': buckets_paths
             }
             response = requests.post(url=f"{self.WORKERS_URL}:{8000 + m + 1}/reduce", json=payload)
             response.raise_for_status() # checks that res.status_code == 200 (OK)
@@ -71,7 +71,7 @@ class Driver():
             # recursively try to reconnect 4 more times
             if retries < 5:
                 time.sleep(1)
-                self.reduce_worker(m, buckets, retries + 1)
+                self.reduce_worker(m, buckets_paths, retries + 1)
 
     def spawn(self, num_t: int, data: list, target: Callable) -> None:
         threads = []
